@@ -138,3 +138,20 @@ func TestHub(t *testing.T) {
 	t.Run("PublishSubscribe", testHubPublishSubscribe)
 	t.Run("InvalidSubscribe", testHubInvalidSubscribe)
 }
+
+func TestMust(t *testing.T) {
+	var (
+		assert = assert.New(t)
+		h      = New()
+	)
+
+	assert.NotPanics(func() {
+		assert.NotNil(
+			Must(h.Subscribe(func(int) {})),
+		)
+	})
+
+	assert.Panics(func() {
+		Must(h.Subscribe(func(string, int) {}))
+	})
+}

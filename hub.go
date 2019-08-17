@@ -43,6 +43,16 @@ func New() Interface {
 	return new(hub)
 }
 
+// Must panics if err is not nil.  This function can be used to wrap Subscribe to panic instead of
+// returning an error.
+func Must(c Cancel, err error) Cancel {
+	if err != nil {
+		panic(err)
+	}
+
+	return c
+}
+
 // hub is the internal synchronous Dispatcher implementation
 type hub struct {
 	subscribeLock sync.Mutex

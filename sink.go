@@ -75,11 +75,15 @@ func newSink(t interface{}) (reflect.Type, sink, error) {
 
 	case listenerType.NumMethod() == 1:
 		m := listenerType.Method(0)
-		if m.Func.Type().NumIn() != 1 || m.Func.Type().NumOut() != 0 {
+
+		// for a method, we include the receiver, which is the first parameter
+		// that means the number of in parameters should be (2), with the event
+		// object being the second parameter
+		if m.Func.Type().NumIn() != 2 || m.Func.Type().NumOut() != 0 {
 			return nil, nil, ErrInvalidFunction
 		}
 
-		eventType = m.Func.Type().In(0)
+		eventType = m.Func.Type().In(1)
 		s = &sinkMethod{r: reflect.ValueOf(t), m: m.Func}
 
 	default:

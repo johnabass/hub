@@ -2,8 +2,6 @@ package hub
 
 import (
 	"fmt"
-	"net/http"
-	"net/http/httptest"
 )
 
 type ExampleEvent struct {
@@ -20,8 +18,8 @@ func (el ExampleListener) On(ee ExampleEvent) {
 func Example() {
 	h := New()
 
-	h.Subscribe(func(r *http.Request) {
-		fmt.Println(r.Method, r.RequestURI)
+	h.Subscribe(func(m map[string]string) {
+		fmt.Println(m["foo"])
 	})
 
 	h.Subscribe(func(m string) {
@@ -30,12 +28,12 @@ func Example() {
 
 	h.Subscribe(ExampleListener{})
 
-	h.Publish(httptest.NewRequest("POST", "/foo", nil))
+	h.Publish(map[string]string{"foo": "bar"})
 	h.Publish("an example message")
 	h.Publish(ExampleEvent{Status: 123})
 
 	// Output:
-	// POST /foo
+	// bar
 	// an example message
 	// 123
 }

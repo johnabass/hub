@@ -7,68 +7,31 @@ import (
 )
 
 // Cancel is a cancellation closure for subscriptions.  Cancels are idempotent.
+//
+// There is no requirement to cancel subscriptions.  Use of cancellation is optional.  It is an expected use case for a listener to remain subscribed for the life of the application.
 type Cancel func()
 
 // Publisher is a sink for events.  Publisher instances are safe for concurrent use and require
 // no external concurrency control.
+//
+// The Publisher implementation returned by New() uses copy-on-write semantics for the set of listeners
+// and a lock-free (atomic value) approach to publish.  This means that concurrent publishes can happen
+// and should be expected.
+//
+// Publishers do not require events to be handled.  If an event has no subscribers, a Publisher will simply do nothing for that event.
 type Publisher interface {
-	// Publish routes an arbitrary object to subscribers.  If there are no listeners subscribed
-	// to the given type of event, this method does nothing.
+	// Publish routes an arbitrary object to subscribers.
 	//
-	// The Publisher implementation returned by New() uses copy-on-write semantics for the set of listeners
-	// and a lock-free (atomic value) approach to publish.  This means that concurrent publishes can happen
-	// and should be expected.
+	// Publish is synchronous, so listeners should not perform long-running tasks
+	// without spawning a goroutine.  If any listener panics, that panic will interrupt
+	// event delivery and the panic will escape the call to Publish.
 	Publish(interface{})
 }
 
 // Subscriber provides event subscriptions for listeners.  Subscriber instances are safe for concurrent use.
-// However, in general a Subscriber implementation will lock on Subscribe.  Ordinarily, this isn't an issue, since
-// a typical application will only subscribe each listener once at startup.
 type Subscriber interface {
-	// Subscribe registers a new listener, using reflection to determine the type of event.  The listener
-	// can take one of several forms:
-	//
-	// (1) A function with exactly (1) input argument and no outputs.  The input argument cannot be an interface type.
-	//     The sole input type is the event type that can be passed to Publish.
-	//
-	//         h.Subscribe(func(e string) {
-	//             fmt.Println(e)
-	//         })
-	//
-	//         h.Publish("an event string")
-	//
-	// (2) A bidrectional or send-only channel.  The channel's element type cannot be an interface.  The channel's
-	//     element type can be passed to Publish, which will then place it onto the channel.
-	//
-	//         c := make(chan MyEvent, 1)
-	//         h.Subscribe(c)
-	//         go func() {
-	//             for e := range c {
-	//                 fmt.Println(e)
-	//             }
-	//         }()
-	//
-	//         h.Publish(MyEvent{Message: "foo"})
-	//
-	//     NOTE: If a channel subscription is cancelled, the channel passed to Subscribe is NOT closed.
-	//
-	// (3) Any type (not just a struct) with a single method of the same signature described in (1).
-	//
-	//         type MyListener struct{}
-	//         func (ml MyListener) On(e MyEvent) {
-	//             fmt.Println(e)
-	//         }
-	//
-	//         l := MyListener{}
-	//         h.Subscribe(l)
-	//
-	//         h.Publish(MyEvent{Status: 123})
-	//
-	// Any other type passed to Subscribe results in ErrInvalidListener.
-	//
-	// The returned cancellation closure can be used to deregister the given listener.  The cancel is idempotent.
-	// Use of the cancellation is optional.  If desired, application code leave subscriptions active
-	// for the life of the application.
+	// Subscribe registers a new listener.  If an error occurs, the returned
+	// Cancel will be nil.
 	Subscribe(l interface{}) (Cancel, error)
 }
 
@@ -88,8 +51,8 @@ func New() Interface {
 // Must panics if err is not nil.  This function can be used to wrap Subscribe to panic instead of
 // returning an error.
 //
-//     h := New()
-//     hub.Must(h.Subscribe(func(MyEvent) error {}) // this will panic, as return values aren't allowed
+//     // this will panic, as return values aren't allowed
+//     hub.Must(h.Subscribe(func(MyEvent) error {})
 func Must(c Cancel, err error) Cancel {
 	if err != nil {
 		panic(err)

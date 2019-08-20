@@ -6,9 +6,21 @@ import (
 )
 
 var (
-	ErrInvalidListener  = errors.New("A listener must be a function, channel, or have exactly (1) method")
-	ErrInvalidFunction  = errors.New("A listener function or method must have exactly (1) input and no outputs")
-	ErrInvalidChannel   = errors.New("A listener channel must be bidirectional or send-only")
+	// ErrInvalidListener indicates that a listener did not conform to a supported type
+	ErrInvalidListener = errors.New("A listener must be a function, channel, or have exactly (1) method")
+
+	// ErrInvalidFunction indicates that a function or method did not have the correct signature
+	ErrInvalidFunction = errors.New("A listener function or method must have exactly (1) input and no outputs")
+
+	// ErrInvalidChannel indicates that an attempt was made to subscribe to a channel that was receive-only
+	ErrInvalidChannel = errors.New("A listener channel must be bidirectional or send-only")
+
+	// ErrInvalidEventType indicates an attempt to subscribe to an interface type as an event.  For example,
+	// these calls to Subscribe result in ErrInvalidEventType:
+	//
+	//    h.Subscribe(func(io.Reader) {})
+	//    c := make(chan error)
+	//    h.Subscribe(c)
 	ErrInvalidEventType = errors.New("Event types cannot be interfaces")
 )
 

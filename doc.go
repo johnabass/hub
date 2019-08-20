@@ -31,7 +31,18 @@
 //
 //         h.Publish(MyEvent{Message: "foo"})
 //
-// NOTE: If a channel subscription is cancelled, the channel passed to Subscribe is NOT closed.
+// NOTE: If a channel subscription is cancelled, the channel passed to Subscribe is NOT closed by default.  Clients can explicitly close the channel in an afterCancel closure:
+//
+//         c := make(chan MyEvent, 1)
+//         cancel, _ := h.Subscribe(c, func() { close(c) })
+//         go func() {
+//             for e := range c {
+//                 fmt.Println(e)
+//             }
+//         }()
+//
+//         // this cancellation will now cause the goroutine to exit
+//         cancel()
 //
 // (3) Any type (not just a struct) with a single method of the same signature described in (1).
 //

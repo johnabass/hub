@@ -32,7 +32,11 @@ type Publisher interface {
 type Subscriber interface {
 	// Subscribe registers a new listener.  If an error occurs, the returned
 	// Cancel will be nil.
-	Subscribe(l interface{}) (Cancel, error)
+	//
+	// If supplied, the afterCancel closures will be invoked during cancellation after
+	// the listener has been deregistered.  Typical usage for an after closure
+	// is closing a subscribed channel or other channel that signals cancellation.
+	Subscribe(l interface{}, afterCancel ...func()) (Cancel, error)
 }
 
 // Interface provides both publish and subscribe functionality
@@ -80,7 +84,7 @@ func (h *hub) Publish(e interface{}) {
 	h.load().publish(e)
 }
 
-func (h *hub) Subscribe(l interface{}) (Cancel, error) {
+func (h *hub) Subscribe(l interface{}, afterCancel ...func()) (Cancel, error) {
 	eventType, s, err := newSink(l)
 	if err != nil {
 		return nil, err
@@ -90,17 +94,21 @@ func (h *hub) Subscribe(l interface{}) (Cancel, error) {
 	h.store(h.load().add(eventType, s))
 	h.subscribeLock.Unlock()
 
-	return h.cancel(eventType, s), nil
+	return h.cancel(eventType, s, afterCancel...), nil
 }
 
 // cancel creates a Cancel closure that will remove the given tuple from the subscriptions
-func (h *hub) cancel(eventType reflect.Type, s sink) Cancel {
+func (h *hub) cancel(eventType reflect.Type, s sink, afterCancel ...func()) Cancel {
 	var once sync.Once
 	return func() {
 		once.Do(func() {
 			h.subscribeLock.Lock()
 			h.store(h.load().remove(eventType, s))
 			h.subscribeLock.Unlock()
+
+			for _, f := range afterCancel {
+				f()
+			}
 		})
 	}
 }

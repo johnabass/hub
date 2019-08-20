@@ -33,7 +33,9 @@ func testHubPublishSubscribe(t *testing.T) {
 		}
 
 		l1 = new(mockListener)
-		l2 = new(mockListener)
+
+		l2                = new(mockListener)
+		afterCancel2Count int
 
 		l3        = make(chan TestEvent, 1)
 		awaitStop = new(sync.WaitGroup)
@@ -60,7 +62,7 @@ func testHubPublishSubscribe(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(cancel1)
 
-	cancel2, err := h.Subscribe(l2.OnEvent)
+	cancel2, err := h.Subscribe(l2.OnEvent, func() { afterCancel2Count++ })
 	require.NoError(err)
 	require.NotNil(cancel2)
 
@@ -81,7 +83,9 @@ func testHubPublishSubscribe(t *testing.T) {
 	h.Publish(firstEvent)
 	h.Publish("a random event")
 
+	assert.Zero(afterCancel2Count)
 	cancel2()
+	assert.Equal(1, afterCancel2Count)
 
 	h.Publish(secondEvent)
 	h.Publish("another random event")
@@ -93,9 +97,11 @@ func testHubPublishSubscribe(t *testing.T) {
 	h.Publish(secondEvent)
 
 	// should be idempotent
+	assert.Equal(1, afterCancel2Count)
 	cancel1()
 	cancel2()
 	cancel3()
+	assert.Equal(1, afterCancel2Count)
 
 	h.Publish(firstEvent)
 	h.Publish(secondEvent)

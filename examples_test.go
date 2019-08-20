@@ -2,6 +2,7 @@ package hub
 
 import (
 	"fmt"
+	"sync"
 )
 
 type ExampleEvent struct {
@@ -22,9 +23,18 @@ func Example() {
 		fmt.Println(m["foo"])
 	})
 
-	h.Subscribe(func(m string) {
-		fmt.Println(m)
-	})
+	// use a wait group to demonstrate channel closure and to ensure all output happens
+	w := new(sync.WaitGroup)
+	w.Add(1)
+
+	c := make(chan string, 1)
+	cancel, _ := h.Subscribe(c, func() { close(c) })
+	go func() {
+		defer w.Done()
+		for m := range c {
+			fmt.Println(m)
+		}
+	}()
 
 	h.Subscribe(ExampleListener{})
 
@@ -32,7 +42,10 @@ func Example() {
 	h.Publish("an example message")
 	h.Publish(ExampleEvent{Status: 123})
 
-	// Output:
+	cancel()
+	w.Wait()
+
+	// Unordered output:
 	// bar
 	// an example message
 	// 123

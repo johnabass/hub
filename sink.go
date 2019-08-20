@@ -6,13 +6,28 @@ import (
 )
 
 var (
-	// ErrInvalidListener indicates that a listener did not conform to a supported type
+	// ErrInvalidListener indicates that a listener did not conform to a supported type.  These calls to Subscribe will result in an ErrInvalidListener:
+	//
+	//    // not a supported type
+	//    h.Subscribe(3.14)
+	//
+	//    // a type with more than one method isn't allowed
+	//    h.Subscribe(func(*bytes.Buffer) {})
 	ErrInvalidListener = errors.New("A listener must be a function, channel, or have exactly (1) method")
 
-	// ErrInvalidFunction indicates that a function or method did not have the correct signature
+	// ErrInvalidFunction indicates that a function or method did not have the correct signature.  For example:
+	//
+	//    // more than one input parameter
+	//    h.Subscribe(func(string, int) {})
+	//
+	//    // return values aren't allowed
+	//    h.Subscribe(func(string) error{})
 	ErrInvalidFunction = errors.New("A listener function or method must have exactly (1) input and no outputs")
 
-	// ErrInvalidChannel indicates that an attempt was made to subscribe to a channel that was receive-only
+	// ErrInvalidChannel indicates that an attempt was made to subscribe to a channel that was receive-only.  For example:
+	//
+	//    var c <-chan string
+	//    h.Subscribe(c)
 	ErrInvalidChannel = errors.New("A listener channel must be bidirectional or send-only")
 
 	// ErrInvalidEventType indicates an attempt to subscribe to an interface type as an event.  For example,
